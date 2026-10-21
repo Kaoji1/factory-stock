@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ฝ่ายขาย - ระบบจัดการข้อมูลลูกค้า</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    .app-container { max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 15px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+
+    table.data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    table.data-table th { background: #e9ecef; padding: 12px 10px; text-align: left; font-size: 14px; color: #495057; }
+    table.data-table td { padding: 12px 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; vertical-align: top; }
+    table.data-table tr:hover { background: #fbfbfb; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      width: 600px;
+      max-width: 90%;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 13.5px; }
+    .form-control {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="card">
+      <div class="header-bar">
+        <div>
+          <h2 style="margin: 0;">👥 ฝ่ายขาย: จัดการข้อมูลลูกค้า</h2>
+          <small style="color: #6c757d;">บันทึกรายชื่อ ที่อยู่สำหรับออกบิล วงเงินเครดิต และแก้ไขประวัติลูกค้า</small>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary" onclick="window.location.href='sale.html'">🔙 ไปหน้าเปิดบิลขาย</button>
+          <button class="btn btn-success" onclick="openCustomerModal()">+ เพิ่มลูกค้าใหม่</button>
+        </div>
+      </div>
+
+      <!-- กล่องค้นหา -->
+      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+        <input type="text" id="search-input" class="form-control" placeholder="🔍 ค้นหารหัสลูกค้า, ชื่อบริษัท หรือเบอร์โทรศัพท์..." oninput="renderTable()">
+      </div>
+
+      <!-- ตารางรายชื่อลูกค้า -->
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 10%;">รหัส</th>
+            <th style="width: 25%;">ชื่อลูกค้า / บริษัท</th>
+            <th style="width: 33%;">ที่อยู่และเลขประจำตัวผู้เสียภาษี</th>
+            <th style="width: 12%;">เบอร์โทร</th>
+            <th style="width: 10%; text-align: right;">วงเงินเครดิต</th>
+            <th style="width: 10%; text-align: center;">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="customer-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal ฟอร์ม (ใช้ได้ทั้งเพิ่มและแก้ไข) -->
+  <div id="customer-modal" class="modal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="margin:0;" id="modal-title">เพิ่มลูกค้าใหม่</h3>
+        <button class="btn btn-secondary" onclick="closeCustomerModal()">✕</button>
+      </div>
+
+      <input type="hidden" id="cust-id">
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>รหัสลูกค้า :</label>
+          <input type="text" id="cust-code" class="form-control" placeholder="เว้นว่างเพื่อให้รันอัตโนมัติ">
+        </div>
+        <div class="form-group">
+          <label>เลขประจำตัวผู้เสียภาษี :</label>
+          <input type="text" id="cust-tax" class="form-control" placeholder="เลข 13 หลัก">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>ชื่อลูกค้า / บริษัท : <span style="color:red;">*</span></label>
+        <input type="text" id="cust-name" class="form-control" placeholder="ระบุชื่อลูกค้า">
+      </div>
+
+      <div class="form-group">
+        <label>ที่อยู่ (สำหรับออกใบกำกับภาษี) :</label>
+        <textarea id="cust-address" class="form-control" rows="2" placeholder="ที่อยู่ เลขที่ หมู่ ตำบล อำเภอ จังหวัด"></textarea>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>เบอร์โทรศัพท์ :</label>
+          <input type="text" id="cust-phone" class="form-control" placeholder="เช่น 081-xxxxxxx">
+        </div>
+        <div class="form-group">
+          <label>วงเงินเครดิต (บาท) :</label>
+          <input type="number" id="cust-credit" class="form-control" value="0">
+        </div>
+      </div>
+
+      <div style="text-align:right; margin-top:20px;">
+        <button class="btn btn-secondary" onclick="closeCustomerModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="submitCustomerForm()">💾 บันทึกข้อมูล</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    let customersList = [];
+
+    window.onload = () => {
+      if (!token) {
+        alert('กรุณาเข้าสู่ระบบก่อน');
+        window.location.href = 'index.html';
+        return;
+      }
+      loadCustomers();
+    };
+
+    async function loadCustomers() {
+      try {
+        const res = await fetch('/api/sales/customers-list', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('โหลดข้อมูลล้มเหลว');
+        customersList = await res.json();
+        renderTable();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderTable() {
+      const search = document.getElementById('search-input').value.trim().toLowerCase();
+      const tbody = document.getElementById('customer-table-body');
+      tbody.innerHTML = '';
+
+      const filtered = customersList.filter(c => 
+        c.customer_name.toLowerCase().includes(search) ||
+        (c.customer_code && c.customer_code.toLowerCase().includes(search)) ||
+        (c.phone && c.phone.includes(search))
+      );
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">ไม่พบข้อมูลลูกค้า</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${c.customer_code || '-'}</strong></td>
+          <td>
+            <strong>${c.customer_name}</strong>
+          </td>
+          <td style="font-size: 13px; line-height: 1.5; color: #555;">
+            ${c.address || '-'}<br>
+            <small style="color: #007bff;">เลขภาษี: ${c.tax_id || '-'}</small>
+          </td>
+          <td>${c.phone || '-'}</td>
+          <td style="text-align: right; font-weight: 600;">${(c.credit_limit || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+          <td style="text-align: center; white-space: nowrap;">
+            <button class="btn" onclick="openCustomerModal(${c.customer_id})" style="padding: 4px 7px; font-size: 12px; background: #ffc107; color: #212529;">
+              ✏️ แก้ไข
+            </button>
+            <button class="btn" onclick="deleteCustomer(${c.customer_id}, '${c.customer_name}')" style="padding: 4px 7px; font-size: 12px; background: #dc3545; color: white;">
+              🗑️ ลบ
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openCustomerModal(id = null) {
+      document.getElementById('cust-id').value = id || '';
+      if (id) {
+        document.getElementById('modal-title').innerText = '✏️ แก้ไขข้อมูลลูกค้า';
+        const c = customersList.find(item => item.customer_id === id);
+        if (c) {
+          document.getElementById('cust-code').value = c.customer_code || '';
+          document.getElementById('cust-name').value = c.customer_name || '';
+          document.getElementById('cust-tax').value = c.tax_id || '';
+          document.getElementById('cust-address').value = c.address || '';
+          document.getElementById('cust-phone').value = c.phone || '';
+          document.getElementById('cust-credit').value = c.credit_limit || 0;
+        }
+      } else {
+        document.getElementById('modal-title').innerText = '➕ เพิ่มลูกค้าใหม่';
+        document.getElementById('cust-code').value = '';
+        document.getElementById('cust-name').value = '';
+        document.getElementById('cust-tax').value = '';
+        document.getElementById('cust-address').value = '';
+        document.getElementById('cust-phone').value = '';
+        document.getElementById('cust-credit').value = '0';
+      }
+      document.getElementById('customer-modal').style.display = 'flex';
+    }
+
+    function closeCustomerModal() {
+      document.getElementById('customer-modal').style.display = 'none';
+    }
+
+    async function submitCustomerForm() {
+      const id = document.getElementById('cust-id').value;
+      const name = document.getElementById('cust-name').value.trim();
+      if (!name) return alert('กรุณากรอกชื่อลูกค้า');
+
+      const payload = {
+        customerCode: document.getElementById('cust-code').value.trim(),
+        customerName: name,
+        taxId: document.getElementById('cust-tax').value.trim(),
+        address: document.getElementById('cust-address').value.trim(),
+        phone: document.getElementById('cust-phone').value.trim(),
+        creditLimit: parseFloat(document.getElementById('cust-credit').value) || 0
+      };
+
+      const url = id ? `/api/customers/${id}` : '/api/customers/add';
+      const method = id ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        alert(data.message);
+        closeCustomerModal();
+        loadCustomers();
+      } catch (err) {
+        alert('เกิดข้อผิดพลาด: ' + err.message);
+      }
+    }
+
+    async function deleteCustomer(id, name) {
+      if (!confirm(`คุณต้องการลบลูกค้ารายการ "${name}" ออกจากระบบใช่หรือไม่?`)) return;
+
+      try {
+        const res = await fetch(`/api/customers/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        alert(data.message);
+        loadCustomers();
+      } catch (err) {
+        alert('เกิดข้อผิดพลาด: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

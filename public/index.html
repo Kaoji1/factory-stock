@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เข้าสู่ระบบ - ระบบจัดการสต็อกและฝ่ายขาย</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #eef2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-card {
+      background: #ffffff;
+      padding: 35px 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 380px;
+    }
+    .login-card h2 {
+      margin-top: 0;
+      color: #333;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: #555;
+      font-size: 14px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    button.btn-login {
+      width: 100%;
+      padding: 12px;
+      background-color: #007bff;
+      border: none;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s;
+    }
+    button.btn-login:hover {
+      background-color: #0056b3;
+    }
+    .error-msg {
+      color: #dc3545;
+      font-size: 14px;
+      margin-top: 12px;
+      text-align: center;
+      display: none;
+    }
+    .hint-box {
+      margin-top: 20px;
+      background: #f8f9fa;
+      border: 1px dashed #ccc;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <h2>🔐 เข้าสู่ระบบ</h2>
+    
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">ชื่อผู้ใช้ (Username):</label>
+        <input type="text" id="username" placeholder="เช่น stock01, sales01, acc01" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">รหัสผ่าน (Password):</label>
+        <input type="password" id="password" value="123456" required>
+      </div>
+
+      <button type="submit" class="btn-login">เข้าสู่ระบบ</button>
+      <div id="errorMsg" class="error-msg"></div>
+    </form>
+
+    <div class="hint-box">
+      <strong>ทดสอบเข้าสู่ระบบ (รหัสผ่าน: 123456 ทุกคน):</strong><br>
+      • ฝ่ายสต็อก: <code>stock01</code> (เปิดหน้า stock.html)<br>
+      • ฝ่ายขาย: <code>sales01</code> (เปิดหน้า sale.html)<br>
+      • ฝ่ายบัญชี: <code>acc01</code> (เปิดหน้า customers.html)<br>
+      • ผู้ดูแลระบบ: <code>admin</code>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const errorMsg = document.getElementById('errorMsg');
+      errorMsg.style.display = 'none';
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'เข้าสู่ระบบไม่สำเร็จ');
+        }
+
+        // 1. บันทึก Token และข้อมูล User ลง LocalStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify({ name: data.name, role: data.role }));
+
+        // 2. Redirect แยกหน้าตาม Role อัตโนมัติ
+        switch (data.role) {
+          case 'INVENTORY':
+            window.location.href = 'stock.html';
+            break;
+          case 'SALES':
+            window.location.href = 'sale.html';
+            break;
+          case 'ACCOUNTING':
+            window.location.href = 'customers.html';
+            break;
+          case 'ADMIN':
+            window.location.href = 'stock.html'; // หรือหน้า Dashboard กลาง
+            break;
+          default:
+            alert('ไม่พบบทบาทที่กำหนดในระบบ');
+        }
+
+      } catch (err) {
+        errorMsg.textContent = err.message;
+        errorMsg.style.display = 'block';
+      }
+    });
+  </script>
+
+</body>
+</html>

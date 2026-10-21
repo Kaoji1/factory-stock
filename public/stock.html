@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ฝ่ายคลังสินค้า - ระบบจัดการสต็อก</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    .app-container { max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 15px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+
+    table.data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    table.data-table th { background: #e9ecef; padding: 12px 10px; text-align: left; font-size: 14px; color: #495057; }
+    table.data-table td { padding: 12px 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; }
+    table.data-table tr:hover { background: #fbfbfb; }
+
+    .badge-qty {
+      font-size: 14px;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .badge-normal { background: #e8f4fd; color: #007bff; }
+    .badge-low { background: #ffe3e3; color: #dc3545; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      width: 520px;
+      max-width: 90%;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 13.5px; }
+    .form-control {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="card">
+      <div class="header-bar">
+        <div>
+          <h2 style="margin: 0;">📦 ฝ่ายคลังสินค้า: ตรวจสอบและจัดการสต็อก</h2>
+          <small style="color: #6c757d;">ดูยอดสินค้าคงเหลือ ปรับยอดรับเข้า-จ่ายออก เพิ่ม ลบ และแก้ไขสินค้า</small>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-primary" onclick="openCategoryModal()">🏷️ + เพิ่มหมวดหมู่</button>
+          <button class="btn btn-success" onclick="openAddModal()">+ เพิ่มสินค้าใหม่</button>
+          <button class="btn btn-secondary" onclick="logout()">ออกจากระบบ</button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+        <input type="text" id="search-input" class="form-control" placeholder="🔍 พิมพ์ค้นหารหัสสินค้า หรือชื่อสินค้า..." oninput="renderTable()">
+      </div>
+
+      <!-- ตารางแสดงสต็อกสินค้า (ตัดราคาทุนออก) -->
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 14%;">รหัสสินค้า</th>
+            <th style="width: 32%;">ชื่อสินค้า</th>
+            <th style="width: 15%;">หมวดหมู่</th>
+            <th style="width: 9%;">หน่วย</th>
+            <th style="width: 12%; text-align: right;">ราคาตั้งต้น</th>
+            <th style="width: 13%; text-align: right;">คงเหลือ</th>
+            <th style="width: 15%; text-align: center;">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="stock-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal 1: ปรับยอดสต็อก -->
+  <div id="adjust-modal" class="modal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="margin:0;" id="modal-adjust-title">ปรับยอดสต็อก</h3>
+        <button class="btn btn-secondary" onclick="closeAdjustModal()">✕</button>
+      </div>
+
+      <input type="hidden" id="adjust-prod-id">
+      <div class="form-group">
+        <label>การดำเนินการ :</label>
+        <select id="adjust-type" class="form-control">
+          <option value="IN">➕ รับเข้าสินค้า (+) เพิ่มเข้าคลัง</option>
+          <option value="OUT">➖ เบิกออก/ตัดจำหน่าย (-) นำออกจากคลัง</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>จำนวน :</label>
+        <input type="number" id="adjust-qty" class="form-control" min="1" placeholder="ระบุจำนวนตัวเลข">
+      </div>
+      <div class="form-group">
+        <label>หมายเหตุ / เอกสารอ้างอิง :</label>
+        <input type="text" id="adjust-notes" class="form-control" placeholder="เช่น สั่งผลิตเพิ่ม, ปรับยอดตรวจนับ">
+      </div>
+
+      <div style="text-align:right; margin-top:20px;">
+        <button class="btn btn-secondary" onclick="closeAdjustModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="submitAdjust()">💾 บันทึกการปรับยอด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: เพิ่มสินค้าใหม่ (ไม่มีราคาทุน) -->
+  <div id="add-modal" class="modal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="margin:0;">➕ เพิ่มสินค้าตัวใหม่</h3>
+        <button class="btn btn-secondary" onclick="closeAddModal()">✕</button>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>รหัสสินค้า :</label>
+          <input type="text" id="new-code" class="form-control" placeholder="เช่น BRK-06, POL-01">
+        </div>
+        <div class="form-group">
+          <label>หมวดหมู่สินค้า :</label>
+          <select id="new-category" class="form-control"></select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>ชื่อสินค้า :</label>
+        <input type="text" id="new-name" class="form-control" placeholder="ระบุชื่อสินค้าและขนาด">
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>หน่วยนับ :</label>
+          <input type="text" id="new-unit" class="form-control" placeholder="เช่น ก้อน, ต้น, แผ่น">
+        </div>
+        <div class="form-group">
+          <label>สต็อกตั้งต้น :</label>
+          <input type="number" id="new-qty" class="form-control" value="0" min="0">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>ราคาขายตั้งต้น (บาท) :</label>
+        <input type="number" step="0.01" id="new-price" class="form-control" placeholder="0.00">
+      </div>
+
+      <div style="text-align:right; margin-top:20px;">
+        <button class="btn btn-secondary" onclick="closeAddModal()">ยกเลิก</button>
+        <button class="btn btn-success" onclick="submitAddNewProduct()">💾 บันทึกสินค้าใหม่</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: เพิ่มหมวดหมู่ -->
+  <div id="category-modal" class="modal">
+    <div class="modal-content" style="width: 420px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="margin:0;">🏷️ เพิ่มหมวดหมู่สินค้า</h3>
+        <button class="btn btn-secondary" onclick="closeCategoryModal()">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label>รหัสหมวดหมู่ (ภาษาอังกฤษย่อ) :</label>
+        <input type="text" id="new-cat-code" class="form-control" placeholder="เช่น PIPE, TILE, CEMENT">
+      </div>
+      <div class="form-group">
+        <label>ชื่อหมวดหมู่ :</label>
+        <input type="text" id="new-cat-name" class="form-control" placeholder="เช่น ท่อระบายน้ำ, แผ่นพื้น">
+      </div>
+
+      <div style="text-align:right; margin-top:20px;">
+        <button class="btn btn-secondary" onclick="closeCategoryModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="submitAddNewCategory()">💾 บันทึกหมวดหมู่</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: แก้ไขสินค้า (ไม่มีราคาทุน) -->
+  <div id="edit-modal" class="modal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="margin:0;">✏️ แก้ไขข้อมูลสินค้า</h3>
+        <button class="btn btn-secondary" onclick="closeEditModal()">✕</button>
+      </div>
+
+      <input type="hidden" id="edit-prod-id">
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>รหัสสินค้า :</label>
+          <input type="text" id="edit-code" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>หมวดหมู่สินค้า :</label>
+          <select id="edit-category" class="form-control"></select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>ชื่อสินค้า :</label>
+        <input type="text" id="edit-name" class="form-control">
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>หน่วยนับ :</label>
+          <input type="text" id="edit-unit" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>ราคาขายตั้งต้น (บาท) :</label>
+          <input type="number" step="0.01" id="edit-price" class="form-control">
+        </div>
+      </div>
+
+      <div style="text-align:right; margin-top:20px;">
+        <button class="btn btn-secondary" onclick="closeEditModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="submitEditProduct()">💾 บันทึกการแก้ไข</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    let productsList = [];
+    let categoriesList = [];
+
+    window.onload = async () => {
+      if (!token) {
+        alert('กรุณาเข้าสู่ระบบก่อน');
+        window.location.href = 'index.html';
+        return;
+      }
+      await loadCategories();
+      await loadProducts();
+    };
+
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/products/categories', { headers: { 'Authorization': `Bearer ${token}` } });
+        categoriesList = await res.json();
+        const optHtml = categoriesList.map(c => `<option value="${c.category_id}">${c.category_name}</option>`).join('');
+        document.getElementById('new-category').innerHTML = optHtml;
+      } catch (err) { console.error(err); }
+    }
+
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.status === 401 || res.status === 403) {
+          alert('สิทธิ์การเข้าถึงไม่ถูกต้อง กรุณาเข้าสู่ระบบด้วยบัญชีฝ่ายสต็อก (stock01)');
+          window.location.href = 'index.html';
+          return;
+        }
+        productsList = await res.json();
+        renderTable();
+      } catch (err) { console.error(err); }
+    }
+
+    function renderTable() {
+      const search = document.getElementById('search-input').value.trim().toLowerCase();
+      const tbody = document.getElementById('stock-table-body');
+      tbody.innerHTML = '';
+
+      const filtered = productsList.filter(p => 
+        p.product_code.toLowerCase().includes(search) || 
+        p.product_name.toLowerCase().includes(search)
+      );
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">ไม่พบรายการสินค้า</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(p => {
+        const isLow = p.stock_quantity <= 50;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${p.product_code}</strong></td>
+          <td>${p.product_name}</td>
+          <td>${p.category_name || '-'}</td>
+          <td>${p.unit}</td>
+          <td style="text-align: right;">${(p.price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+          <td style="text-align: right;">
+            <span class="badge-qty ${isLow ? 'badge-low' : 'badge-normal'}">
+              ${p.stock_quantity.toLocaleString()} ${p.unit}
+            </span>
+          </td>
+          <td style="text-align: center; white-space: nowrap;">
+            <button class="btn btn-primary" onclick="openAdjustModal(${p.product_id}, '${p.product_code}', '${p.product_name}')" style="padding: 4px 7px; font-size: 12px;">
+              ⚖️ ปรับยอด
+            </button>
+            <button class="btn" onclick="openEditModal(${p.product_id})" style="padding: 4px 7px; font-size: 12px; background: #ffc107; color: #212529;">
+              ✏️ แก้ไข
+            </button>
+            <button class="btn" onclick="deleteProduct(${p.product_id}, '${p.product_name}')" style="padding: 4px 7px; font-size: 12px; background: #dc3545; color: white;">
+              🗑️ ลบ
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ปรับยอด
+    function openAdjustModal(id, code, name) {
+      document.getElementById('adjust-prod-id').value = id;
+      document.getElementById('modal-adjust-title').innerText = `ปรับยอด: ${code} (${name})`;
+      document.getElementById('adjust-qty').value = '';
+      document.getElementById('adjust-notes').value = '';
+      document.getElementById('adjust-modal').style.display = 'flex';
+    }
+    function closeAdjustModal() { document.getElementById('adjust-modal').style.display = 'none'; }
+
+    async function submitAdjust() {
+      const productId = document.getElementById('adjust-prod-id').value;
+      const type = document.getElementById('adjust-type').value;
+      const qtyVal = parseFloat(document.getElementById('adjust-qty').value);
+      const notes = document.getElementById('adjust-notes').value;
+
+      if (!qtyVal || qtyVal <= 0) return alert('กรุณากรอกจำนวนที่ถูกต้อง');
+      const adjustQty = type === 'IN' ? qtyVal : -qtyVal;
+
+      try {
+        const res = await fetch('/api/products/adjust', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ productId, adjustQty, notes })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        alert(data.message);
+        closeAdjustModal();
+        loadProducts();
+      } catch (err) { alert('เกิดข้อผิดพลาด: ' + err.message); }
+    }
+
+    // เพิ่มสินค้าใหม่
+    function openAddModal() {
+      document.getElementById('new-code').value = '';
+      document.getElementById('new-name').value = '';
+      document.getElementById('new-unit').value = 'ก้อน';
+      document.getElementById('new-qty').value = '0';
+      document.getElementById('new-price').value = '';
+      document.getElementById('add-modal').style.display = 'flex';
+    }
+    function closeAddModal() { document.getElementById('add-modal').style.display = 'none'; }
+
+    async function submitAddNewProduct() {
+      const payload = {
+        productCode: document.getElementById('new-code').value,
+        productName: document.getElementById('new-name').value,
+        categoryId: document.getElementById('new-category').value,
+        unit: document.getElementById('new-unit').value,
+        price: document.getElementById('new-price').value,
+        initialQty: document.getElementById('new-qty').value
+      };
+
+      try {
+        const res = await fetch('/api/products/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        alert(data.message);
+        closeAddModal();
+        loadProducts();
+      } catch (err) { alert('เกิดข้อผิดพลาด: ' + err.message); }
+    }
+
+    // เพิ่มหมวดหมู่
+    function openCategoryModal() {
+      document.getElementById('new-cat-code').value = '';
+      document.getElementById('new-cat-name').value = '';
+      document.getElementById('category-modal').style.display = 'flex';
+    }
+    function closeCategoryModal() { document.getElementById('category-modal').style.display = 'none'; }
+
+    async function submitAddNewCategory() {
+      const categoryCode = document.getElementById('new-cat-code').value.trim();
+      const categoryName = document.getElementById('new-cat-name').value.trim();
+
+      if (!categoryCode || !categoryName) return alert('กรุณากรอกรหัสและชื่อหมวดหมู่ให้ครบถ้วน');
+
+      try {
+        const res = await fetch('/api/products/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ categoryCode, categoryName })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        alert(data.message);
+        closeCategoryModal();
+        await loadCategories();
+      } catch (err) { alert('เกิดข้อผิดพลาด: ' + err.message); }
+    }
+
+    // แก้ไขสินค้า
+    function openEditModal(prodId) {
+      const p = productsList.find(item => item.product_id === prodId);
+      if (!p) return;
+
+      document.getElementById('edit-prod-id').value = p.product_id;
+      document.getElementById('edit-code').value = p.product_code;
+      document.getElementById('edit-name').value = p.product_name;
+      document.getElementById('edit-unit').value = p.unit;
+      
+      // ดึงราคาเดิมขึ้นมาแสดง
+      const currentPrice = p.price !== undefined ? p.price : (p.selling_price || 0);
+      document.getElementById('edit-price').value = currentPrice;
+
+      const sel = document.getElementById('edit-category');
+      sel.innerHTML = categoriesList.map(c => 
+        `<option value="${c.category_id}" ${c.category_id === p.category_id ? 'selected' : ''}>${c.category_name}</option>`
+      ).join('');
+
+      document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
+
+    async function submitEditProduct() {
+      const prodId = document.getElementById('edit-prod-id').value;
+      const priceVal = parseFloat(document.getElementById('edit-price').value) || 0;
+
+      const payload = {
+        productCode: document.getElementById('edit-code').value,
+        productName: document.getElementById('edit-name').value,
+        categoryId: document.getElementById('edit-category').value,
+        unit: document.getElementById('edit-unit').value,
+        price: priceVal,
+        sellingPrice: priceVal // ส่งคู่กันไปป้องกัน Backend อ่านชื่อตัวแปรไม่ตรง
+      };
+
+      try {
+        const res = await fetch(`/api/products/${prodId}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        alert(data.message);
+        closeEditModal();
+        loadProducts();
+      } catch (err) { 
+        alert('เกิดข้อผิดพลาด: ' + err.message); 
+      }
+    }
+
+    // ลบสินค้า
+    async function deleteProduct(prodId, prodName) {
+      if (!confirm(`คุณต้องการลบสินค้า "${prodName}" ออกจากระบบใช่หรือไม่?`)) return;
+
+      try {
+        const res = await fetch(`/api/products/${prodId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        alert(data.message);
+        loadProducts();
+      } catch (err) { alert('เกิดข้อผิดพลาด: ' + err.message); }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>

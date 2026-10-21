@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ระบบเปิดบิลขาย - ฝ่ายขาย</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    /* Screen UI */
+    .app-container { max-width: 1150px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e9ecef; padding-bottom: 15px; }
+    
+    .form-grid { 
+      display: grid; 
+      grid-template-columns: 2fr 0.8fr 1fr 1.2fr 1.5fr; 
+      gap: 12px; 
+      margin-bottom: 15px; 
+    }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 13.5px; color: #495057; }
+    
+    .form-control {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .form-control:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.15); }
+
+    .customer-info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #007bff;
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-size: 13.5px;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    table.data-table th { background: #e9ecef; padding: 10px 8px; text-align: left; font-size: 13.5px; color: #495057; }
+    table.data-table td { padding: 8px; border-bottom: 1px solid #dee2e6; }
+
+    .btn { padding: 9px 18px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: 'Sarabun', sans-serif; font-size: 14px; transition: all 0.2s; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-info { background: #17a2b8; color: white; }
+    .btn-info:hover { background: #138496; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-danger-outline { background: transparent; color: #dc3545; border: 1px solid #dc3545; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+    .btn-danger-outline:hover { background: #dc3545; color: white; }
+
+    .stock-tag {
+      display: inline-block;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #007bff;
+      background: #e8f4fd;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-top: 3px;
+    }
+    .stock-tag.low { color: #dc3545; background: #ffe3e3; }
+
+    .summary-section { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 20px; padding-top: 15px; border-top: 2px solid #e9ecef; }
+    .thai-baht-tag { background: #e8f4fd; color: #0056b3; padding: 10px 16px; border-radius: 6px; font-weight: 600; font-size: 15px; }
+    .totals-box { width: 320px; font-size: 14px; }
+    .totals-row { display: flex; justify-content: space-between; padding: 6px 0; }
+    .totals-row.grand { font-size: 18px; font-weight: 700; color: #007bff; border-top: 1px solid #ced4da; margin-top: 6px; padding-top: 10px; }
+
+    /* Modal เช็กสต็อก */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      width: 750px;
+      max-width: 90%;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+/* Print Template ฉบับแก้ไขระยะห่างลายเซ็นสมบูรณ์ */
+    #print-template { display: none; }
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 6mm 10mm;
+      }
+      body { 
+        background: white !important; 
+        padding: 0 !important; 
+        margin: 0 !important; 
+        font-family: 'Sarabun', sans-serif !important;
+        font-size: 14px !important;
+        color: #000 !important;
+      }
+      .app-container, .no-print, .modal { display: none !important; }
+      
+      #print-template { 
+        display: block !important; 
+        width: 100% !important; 
+      }
+
+      .p-header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+      .p-logo { font-size: 44px; font-weight: 800; vertical-align: top; width: 65px; line-height: 1; }
+      .p-comp-info { vertical-align: top; font-size: 12.5px; line-height: 1.35; }
+      .p-doc-info { vertical-align: top; text-align: right; font-size: 13px; line-height: 1.35; }
+
+      .p-customer-box { 
+        border: 1.5px solid #000 !important; 
+        padding: 4px 8px !important; 
+        font-size: 13px !important; 
+        line-height: 1.35 !important; 
+        margin-bottom: 0px !important; 
+      }
+
+      /* ตารางรายการสินค้า */
+      table.p-bill-table { 
+        width: 100% !important; 
+        border-collapse: collapse !important; 
+        font-size: 13px !important; 
+        border: 1.5px solid #000 !important; 
+        border-top: none !important; 
+      }
+      table.p-bill-table th, table.p-bill-table td { 
+        border: 1.5px solid #000 !important; 
+        padding: 2px 4px !important; 
+      }
+      table.p-bill-table th { 
+        background: #fff !important; 
+        text-align: center !important; 
+        font-size: 13.5px !important;
+        padding: 4px 2px !important;
+      }
+      
+      table.p-bill-table tbody tr {
+        height: 32px !important; 
+      }
+
+      /* ตารางสรุปยอดเงิน */
+      table.p-summary-table { 
+        width: 100% !important; 
+        border-collapse: collapse !important; 
+        font-size: 13px !important; 
+        border: 1.5px solid #000 !important;
+        border-top: none !important;
+      }
+      table.p-summary-table td { 
+        border: 1.5px solid #000 !important; 
+        padding: 3px 6px !important; 
+      }
+/* ส่วนลงลายมือชื่อ: ดันลงล่างสุด และเว้นระยะข้อความให้โปร่งโล่ง */
+      .p-signatures { 
+        display: grid !important; 
+        grid-template-columns: 1fr 1fr 1fr !important; 
+        gap: 25px !important; 
+        margin-top: 55px !important; /* ดันบล็อกลายเซ็นทั้งหมดให้ลงมาอยู่ช่วงล่างของหน้า A4 พอดี */
+        text-align: center !important; 
+        font-size: 13.5px !important; 
+      }
+      .p-sig-slot { 
+        border-bottom: 1.5px dotted #000 !important; 
+        padding-top: 35px !important; /* เว้นพื้นที่เหนือเส้นประสำหรับให้เซ็นชื่อ */
+        margin-bottom: 10px !important; /* ดันข้อความชื่อและวันที่ให้ออกจากเส้นประลงมาด้านล่างอย่างชัดเจน */
+      }
+      .p-sig-label {
+        line-height: 1.6 !important;
+      }}
+  </style>
+</head>
+<body>
+
+  <datalist id="product-code-list"></datalist>
+
+  <div class="app-container">
+    <div class="card">
+      <div class="header-bar">
+        <div>
+          <h2 style="margin: 0;">📝 เปิดบิลขายสินค้า (Sales Order)</h2>
+          <small style="color: #6c757d;">ฝ่ายขาย: บันทึกการสั่งซื้อ ตรวจสอบสต็อก และพิมพ์ใบกำกับภาษี</small>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <!-- เพิ่มปุ่มนี้ -->
+          <button class="btn btn-primary" onclick="window.location.href='manage-customers.html'">👥 จัดการลูกค้า</button>
+          <button class="btn btn-success" onclick="window.location.href='sales-report.html'">📊 รายงานยอดขาย</button>
+          <button class="btn btn-info" onclick="openStockCheckModal()">🔍 เช็กสต็อกสินค้า</button>
+          <button class="btn btn-secondary" onclick="logout()">ออกจากระบบ</button>
+        </div>
+      </div>
+
+      <!-- ข้อมูลหัวบิล -->
+      <div class="form-grid">
+        <div class="form-group">
+          <label>เลือกลูกค้า :</label>
+          <select id="select-customer" class="form-control" onchange="onCustomerChange()">
+            <option value="">-- เลือกลูกค้า --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>เล่มที่ :</label>
+          <input type="text" id="bill-book-no" class="form-control" value="1" style="background: #e9ecef;" readonly>
+        </div>
+        <div class="form-group">
+          <label>เลขที่บิล :</label>
+          <input type="text" id="bill-no" class="form-control" readonly style="background: #e9ecef; font-weight: bold; color: #007bff;">
+        </div>
+        <div class="form-group">
+          <label>วันที่ออกเอกสาร :</label>
+          <input type="text" id="bill-date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>สถานะการชำระเงิน :</label>
+          <select id="payment-status" class="form-control" style="font-weight: 600; color: #d9534f;">
+            <option value="UNPAID" style="color: #d9534f;">⏳ ยังไม่ชำระ (เครดิต / เป็นลูกหนี้)</option>
+            <option value="PAID" style="color: #28a745;">✅ ชำระเงินสด / โอนแล้ว</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="customer-info-box" id="cust-preview">
+        <strong>ข้อมูลลูกค้า:</strong> กรุณาเลือกลูกค้าด้านบน
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h4 style="margin: 0;">📦 รายการสินค้าที่สั่งซื้อ</h4>
+        <button class="btn btn-success" onclick="addRow()">+ เพิ่มแถวสินค้า</button>
+      </div>
+
+      <table class="data-table" id="ui-items-table">
+        <thead>
+          <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 22%;">รหัสสินค้า (พิมพ์ค้นหา)</th>
+            <th style="width: 28%;">รายการสินค้า</th>
+            <th style="width: 12%;">จำนวน</th>
+            <th style="width: 8%;">หน่วย</th>
+            <th style="width: 12%;">ราคา/หน่วย</th>
+            <th style="width: 11%;">จำนวนเงิน</th>
+            <th style="width: 4%; text-align: center;">ลบ</th>
+          </tr>
+        </thead>
+        <tbody id="ui-items-body"></tbody>
+      </table>
+
+      <!-- สรุปยอดเงิน -->
+      <div class="summary-section">
+        <div class="thai-baht-tag">
+          จำนวนเงินตัวอักษร: <span id="lbl-thai-baht">ศูนย์บาทถ้วน</span>
+        </div>
+        <div class="totals-box">
+          <div class="totals-row">
+            <span>รวมราคาสินค้า:</span>
+            <span id="lbl-subtotal">0.00 บาท</span>
+          </div>
+          <div class="totals-row">
+            <span>
+              <input type="checkbox" id="chk-vat" checked onchange="calcTotal()"> ภาษีมูลค่าเพิ่ม (VAT 7%):
+            </span>
+            <span id="lbl-vat">0.00 บาท</span>
+          </div>
+          <div class="totals-row grand">
+            <span>รวมเงินทั้งสิ้น:</span>
+            <span id="lbl-grand-total">0.00 บาท</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align: right; margin-top: 25px;">
+        <button class="btn btn-primary" onclick="saveAndPrint()" style="padding: 12px 28px; font-size: 16px;">
+          💾 บันทึกและพิมพ์บิลทันที
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal หน้าต่างเช็กสต็อกสินค้าคงเหลือ -->
+  <div id="stock-modal" class="modal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="margin:0;">📦 เช็กสต็อกสินค้าคงเหลือทั้งหมด</h3>
+        <button class="btn btn-secondary" onclick="closeStockCheckModal()">✕ ปิด</button>
+      </div>
+      <input type="text" id="modal-search" class="form-control" placeholder="🔍 ค้นหารหัสสินค้า หรือชื่อสินค้า..." oninput="renderStockModalTable()" style="margin-bottom:12px;">
+      
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 20%;">รหัสสินค้า</th>
+            <th style="width: 40%;">ชื่อสินค้า</th>
+            <th style="width: 15%; text-align:right;">ราคาตั้งต้น</th>
+            <th style="width: 25%; text-align:right;">คงเหลือในคลัง</th>
+          </tr>
+        </thead>
+        <tbody id="stock-modal-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+<!-- Print Template: ดีไซน์ตรงตามต้นฉบับจริงเป๊ะ -->
+  <div id="print-template">
+    <table class="p-header-table">
+      <tr>
+        <td class="p-logo">SD</td>
+        <td class="p-comp-info">
+          <strong style="font-size: 15px;">บริษัท เอสดี คอนกรีต โปรดักท์ จำกัด</strong><br>
+          สำนักงานใหญ่ 116/3 หมู่ 10 ต.ตาลเดี่ยว อ.แก่งคอย จ.สระบุรี 18110<br>
+          โทร. (036) 358318, 358319 แฟกซ์ (036) 358318<br>
+          เลขประจำตัวผู้เสียภาษีอากร 0195552001116
+        </td>
+        <td class="p-doc-info">
+          <strong style="font-size: 16px;">บิลเงินสด/ใบส่งของ</strong><br>
+          <small>เอกสารออกเป็นชุด</small><br><br>
+          เล่มที่ <span id="p-book-no">1</span> &nbsp;&nbsp;&nbsp;&nbsp; เลขที่ <span id="p-bill-no" style="font-weight:bold;">1</span><br>
+          วันที่ <span id="p-bill-date"></span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- กล่องข้อมูลลูกค้า ชิดขอบบน-ล่างพอดี -->
+    <div class="p-customer-box">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="width: 75px; vertical-align: top;"><strong>นามลูกค้า :</strong></td>
+          <td style="vertical-align: top;">
+            เลขประจำตัวผู้เสียภาษี <span id="p-cust-tax">-</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top; padding-top: 4px;"><strong>ที่อยู่ :</strong></td>
+          <td style="vertical-align: top; padding-top: 4px;">
+            <strong id="p-cust-name" style="font-size: 14px;">-</strong><br>
+            <span id="p-cust-address">-</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ตารางรายการสินค้า -->
+    <table class="p-bill-table" style="border-top: none;">
+      <thead>
+        <tr>
+          <th style="width: 7%;">ลำดับ</th>
+          <th style="width: 16%;">รหัสสินค้า</th>
+          <th style="width: 35%;">รายการสินค้า</th>
+          <th style="width: 11%;">จำนวน</th>
+          <th style="width: 9%;">หน่วย</th>
+          <th style="width: 11%;">หน่วยละ</th>
+          <th style="width: 11%;">จำนวนเงิน</th>
+        </tr>
+      </thead>
+      <tbody id="p-items-body"></tbody>
+    </table>
+
+    <!-- ตารางสรุปยอดเงิน -->
+    <table class="p-summary-table">
+      <tr>
+        <td rowspan="3" style="width: 58%; vertical-align: middle; text-align: center; font-weight: bold;">
+          (<span id="p-lbl-thai-baht">ศูนย์บาทถ้วน</span>)<br><br>
+          <small style="font-weight: normal; font-size: 12.5px;">ข้าพเจ้าได้รับสินค้าตามรายการข้างต้นครบถ้วนถูกต้องและเรียบร้อยแล้ว</small>
+        </td>
+        <td style="width: 26%; text-align: right;"><strong>รวมราคาสินค้า</strong></td>
+        <td style="width: 16%; text-align: right; font-weight: bold;" id="p-lbl-subtotal">0.00</td>
+      </tr>
+      <tr>
+        <td style="text-align: right;"><strong>ภาษีมูลค่าเพิ่ม 7%</strong></td>
+        <td style="text-align: right; font-weight: bold;" id="p-lbl-vat">0.00</td>
+      </tr>
+      <tr>
+        <td style="text-align: right;"><strong>รวมเงินทั้งสิ้น</strong></td>
+        <td style="text-align: right; font-weight: bold;" id="p-lbl-grand-total">0.00</td>
+      </tr>
+    </table>
+
+<!-- ช่องลายเซ็น -->
+    <div class="p-signatures">
+      <div>
+        <div class="p-sig-slot"></div>
+        <div class="p-sig-label">
+          ผู้รับสินค้า<br><br>
+          วันที่ ............../............../..............
+        </div>
+      </div>
+      <div>
+        <div class="p-sig-slot"></div>
+        <div class="p-sig-label">
+          ผู้ส่งสินค้า<br><br>
+          วันที่ ............../............../..............
+        </div>
+      </div>
+      <div>
+        <div class="p-sig-slot"></div>
+        <div class="p-sig-label">
+          ผู้อนุมัติ<br><br>
+          วันที่ ............../............../..............
+        </div>
+      </div>
+    </div>
+
+  <script>
+    let productsList = [];
+    let customersList = [];
+    const token = localStorage.getItem('token');
+
+    window.onload = async () => {
+      const now = new Date();
+      const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+      document.getElementById('bill-date').value = `${now.getDate()} ${thaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
+
+      await Promise.all([
+        loadBillMeta(),
+        loadCustomers(),
+        loadProducts()
+      ]);
+
+      addRow();
+    };
+
+    async function loadBillMeta() {
+      try {
+        const res = await fetch('/api/sales/next-bill-no', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        document.getElementById('bill-book-no').value = data.bookNo || '1';
+        document.getElementById('bill-no').value = data.nextBillNo || '1';
+      } catch (e) {
+        document.getElementById('bill-book-no').value = '1';
+        document.getElementById('bill-no').value = '1';
+      }
+    }
+
+    async function loadCustomers() {
+      try {
+        const res = await fetch('/api/sales/customers-list', { headers: { 'Authorization': `Bearer ${token}` } });
+        customersList = await res.json();
+        const sel = document.getElementById('select-customer');
+        sel.innerHTML = '<option value="">-- เลือกลูกค้า --</option>' + 
+          customersList.map(c => `<option value="${c.customer_id}">${c.customer_name}</option>`).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
+        productsList = await res.json();
+        
+        // ใส่ใน DataList แนะนำตัวเลือก
+        const dl = document.getElementById('product-code-list');
+        dl.innerHTML = productsList.map(p => 
+          `<option value="${p.product_code}">${p.product_name} (คงเหลือ: ${p.stock_quantity} ${p.unit})</option>`
+        ).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    function onCustomerChange() {
+      const custId = document.getElementById('select-customer').value;
+      const cust = customersList.find(c => c.customer_id == custId);
+      const preview = document.getElementById('cust-preview');
+      if (cust) {
+        preview.innerHTML = `
+          <strong>ลูกค้า:</strong> ${cust.customer_name} &nbsp;|&nbsp; 
+          <strong>เลขประจำตัวผู้เสียภาษี:</strong> ${cust.tax_id || '0195538000370'}<br>
+          <strong>ที่อยู่:</strong> ${cust.address || '110 หมู่ 8 ถนนแก่งคอย - บ้านนา ต.ตาลเดี่ยว อ.แก่งคอย จ.สระบุรี 18110'}
+        `;
+      } else {
+        preview.innerHTML = `<strong>ข้อมูลลูกค้า:</strong> กรุณาเลือกลูกค้าด้านบน`;
+      }
+    }
+
+    // เพิ่มแถวสินค้าในบิล
+    function addRow() {
+      const tbody = document.getElementById('ui-items-body');
+      const rowIdx = tbody.children.length + 1;
+      const tr = document.createElement('tr');
+
+      tr.innerHTML = `
+        <td class="row-num">${rowIdx}</td>
+        <td>
+          <input type="text" list="product-code-list" class="form-control item-code" placeholder="พิมพ์รหัสสินค้า" oninput="onProductCodeSearch(this)">
+          <input type="hidden" class="item-prod-id" value="">
+          <input type="hidden" class="item-stock-max" value="0">
+          <div class="stock-info-tag"></div>
+        </td>
+        <td>
+          <input type="text" class="form-control item-name" readonly placeholder="ชื่อสินค้าอัตโนมัติ" style="background:#e9ecef;">
+        </td>
+        <td><input type="number" class="form-control item-qty" placeholder="จำนวน" min="1" oninput="calcRow(this)"></td>
+        <td class="item-unit" style="color: #6c757d; text-align: center;">-</td>
+        <td>
+          <input type="number" step="0.01" class="form-control item-price" placeholder="0.00" style="text-align: right;" oninput="calcRow(this)">
+        </td>
+        <td class="item-total" style="font-weight: 700; text-align: right; padding-top: 14px;">0.00</td>
+        <td style="text-align: center;">
+          <button class="btn-danger-outline" onclick="deleteRow(this)">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // เมื่อค้นหารหัสสินค้า -> ดึงชื่อ ราคา และจำนวนสต็อกคงเหลือมาแสดง
+    function onProductCodeSearch(input) {
+      const tr = input.closest('tr');
+      const val = input.value.trim().toUpperCase();
+      const product = productsList.find(p => p.product_code.toUpperCase() === val);
+      const stockTagDiv = tr.querySelector('.stock-info-tag');
+
+      if (product) {
+        tr.querySelector('.item-prod-id').value = product.product_id;
+        tr.querySelector('.item-name').value = product.product_name;
+        tr.querySelector('.item-unit').innerText = product.unit;
+        tr.querySelector('.item-stock-max').value = product.stock_quantity;
+
+        const autoPrice = product.price !== undefined ? product.price : (product.selling_price || 0);
+        tr.querySelector('.item-price').value = parseFloat(autoPrice).toFixed(2);
+
+        // แสดงป้ายสต็อกคงเหลือ
+        const isLow = product.stock_quantity <= 0;
+        stockTagDiv.innerHTML = `<span class="stock-tag ${isLow ? 'low' : ''}">คงเหลือ: ${product.stock_quantity} ${product.unit}</span>`;
+      } else {
+        tr.querySelector('.item-prod-id').value = '';
+        tr.querySelector('.item-name').value = '';
+        tr.querySelector('.item-unit').innerText = '-';
+        tr.querySelector('.item-price').value = '0.00';
+        tr.querySelector('.item-stock-max').value = '0';
+        stockTagDiv.innerHTML = '';
+      }
+
+      calcRow(input);
+    }
+
+    function calcRow(elem) {
+      const tr = elem.closest('tr');
+      const qtyInput = tr.querySelector('.item-qty');
+      const qty = parseFloat(qtyInput.value) || 0;
+      const price = parseFloat(tr.querySelector('.item-price').value) || 0;
+      const maxStock = parseFloat(tr.querySelector('.item-stock-max').value) || 0;
+      const prodId = tr.querySelector('.item-prod-id').value;
+
+      // แจ้งเตือนสีแดงหากขายเกินสต็อก
+      if (prodId && qty > maxStock) {
+        qtyInput.style.borderColor = '#dc3545';
+        qtyInput.style.backgroundColor = '#fff5f5';
+      } else {
+        qtyInput.style.borderColor = '#ced4da';
+        qtyInput.style.backgroundColor = '#fff';
+      }
+
+      const total = qty * price;
+      tr.querySelector('.item-total').innerText = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
+      calcTotal();
+    }
+
+    function deleteRow(btn) {
+      btn.closest('tr').remove();
+      document.querySelectorAll('#ui-items-body tr').forEach((tr, i) => {
+        tr.querySelector('.row-num').innerText = i + 1;
+      });
+      calcTotal();
+    }
+
+    function calcTotal() {
+      let subtotal = 0;
+      document.querySelectorAll('#ui-items-body tr').forEach(tr => {
+        const val = parseFloat(tr.querySelector('.item-total').innerText.replace(/,/g, '')) || 0;
+        subtotal += val;
+      });
+
+      const hasVat = document.getElementById('chk-vat').checked;
+      const vat = hasVat ? subtotal * 0.07 : 0;
+      const grand = subtotal + vat;
+
+      document.getElementById('lbl-subtotal').innerText = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' บาท';
+      document.getElementById('lbl-vat').innerText = vat.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' บาท';
+      document.getElementById('lbl-grand-total').innerText = grand.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' บาท';
+      document.getElementById('lbl-thai-baht').innerText = ArabicToThaiBaht(grand);
+    }
+
+    function ArabicToThaiBaht(n) {
+      if (isNaN(n) || n === 0) return "ศูนย์บาทถ้วน";
+      const d = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
+      const u = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"];
+      let [baht, satang] = n.toFixed(2).split(".");
+      
+      function conv(str) {
+        let res = "", len = str.length;
+        for (let i = 0; i < len; i++) {
+          let num = parseInt(str[i]), unit = len - i - 1;
+          if (num !== 0) {
+            if (unit === 1 && num === 1) res += "สิบ";
+            else if (unit === 1 && num === 2) res += "ยี่สิบ";
+            else if (unit === 0 && num === 1 && len > 1 && parseInt(str[len - 2]) !== 0) res += "เอ็ด";
+            else res += d[num] + u[unit];
+          }
+        }
+        return res;
+      }
+      return conv(baht) + "บาท" + (satang === "00" ? "ถ้วน" : conv(satang) + "สตางค์");
+    }
+
+    // Modal เช็กสต็อกสินค้าคงเหลือ
+    async function openStockCheckModal() {
+      await loadProducts(); // โหลดสต็อกล่าสุด
+      document.getElementById('modal-search').value = '';
+      renderStockModalTable();
+      document.getElementById('stock-modal').style.display = 'flex';
+    }
+
+    function closeStockCheckModal() {
+      document.getElementById('stock-modal').style.display = 'none';
+    }
+
+    function renderStockModalTable() {
+      const search = document.getElementById('modal-search').value.trim().toLowerCase();
+      const tbody = document.getElementById('stock-modal-tbody');
+      tbody.innerHTML = '';
+
+      const filtered = productsList.filter(p => 
+        p.product_code.toLowerCase().includes(search) || 
+        p.product_name.toLowerCase().includes(search)
+      );
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">ไม่พบสินค้า</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(p => {
+        const isOut = p.stock_quantity <= 0;
+        const isLow = p.stock_quantity <= 50;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${p.product_code}</strong></td>
+          <td>${p.product_name}</td>
+          <td style="text-align:right;">${(p.price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} บาท</td>
+          <td style="text-align:right; font-weight:bold; color: ${isOut ? '#dc3545' : (isLow ? '#e67e22' : '#28a745')};">
+            ${p.stock_quantity.toLocaleString()} ${p.unit} ${isOut ? '(หมด)' : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function saveAndPrint() {
+      const custId = document.getElementById('select-customer').value;
+      if (!custId) return alert('กรุณาเลือกรายชื่อลูกค้าก่อน');
+
+      const bookNoVal = document.getElementById('bill-book-no').value || '1';
+      const billNoVal = document.getElementById('bill-no').value || '1';
+      const payStatus = document.getElementById('payment-status')?.value || 'UNPAID';
+
+      const items = [];
+      const printTbody = document.getElementById('p-items-body');
+      printTbody.innerHTML = '';
+
+      let idx = 1;
+      let hasStockError = false;
+
+      document.querySelectorAll('#ui-items-body tr').forEach(tr => {
+        const prodId = tr.querySelector('.item-prod-id')?.value;
+        const code = tr.querySelector('.item-code')?.value || ''; // รหัสสินค้า
+        const name = tr.querySelector('.item-name')?.value;
+        const qty = parseFloat(tr.querySelector('.item-qty')?.value) || 0;
+        const maxStock = parseFloat(tr.querySelector('.item-stock-max')?.value) || 0;
+
+        if (prodId && qty > maxStock) {
+          alert(`สินค้า "${name}" มีในสต็อกเพียง ${maxStock} แต่ระบุจำนวน ${qty}`);
+          hasStockError = true;
+          return;
+        }
+
+        if (prodId && qty > 0) {
+          const unit = tr.querySelector('.item-unit').innerText;
+          const unitPrice = parseFloat(tr.querySelector('.item-price').value) || 0;
+          const total = qty * unitPrice;
+
+          items.push({
+            productId: parseInt(prodId),
+            itemName: name,
+            quantity: qty,
+            unit: unit,
+            unitPrice: unitPrice,
+            amount: total
+          });
+
+          // เพิ่ม <td> สำหรับรหัสสินค้า
+          printTbody.innerHTML += `
+            <tr>
+              <td style="text-align:center;">${idx++}</td>
+              <td style="text-align:center;">${code}</td>
+              <td>${name}</td>
+              <td style="text-align:right;">${qty.toFixed(2)}</td>
+              <td style="text-align:center;">${unit}</td>
+              <td style="text-align:right;">${unitPrice.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+              <td style="text-align:right; font-weight:bold;">${total.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+            </tr>
+          `;
+        }
+      });
+
+      if (hasStockError) return;
+      if (items.length === 0) return alert('กรุณาพิมพ์เลือกรหัสสินค้าและระบุจำนวนอย่างน้อย 1 รายการ');
+
+// ขยายจำนวนแถวว่างเป็น 12 บรรทัดเพื่อให้เต็มหน้า A4 พอดี
+while (idx <= 12) {
+        printTbody.innerHTML += `
+          <tr style="height: 36px;">
+            <td style="text-align:center; border: 1.5px solid #000;">${idx++}</td>
+            <td style="border: 1.5px solid #000;"></td>
+            <td style="border: 1.5px solid #000;"></td>
+            <td style="border: 1.5px solid #000;"></td>
+            <td style="border: 1.5px solid #000;"></td>
+            <td style="border: 1.5px solid #000;"></td>
+            <td style="border: 1.5px solid #000;"></td>
+          </tr>
+        `;
+      }
+      
+      // ปิดท้ายตารางด้วยเส้นขอบล่าง
+      printTbody.innerHTML += `
+        <tr style="height: 2px;">
+          <td colspan="7" style="padding: 0; border-top: 1.5px solid #000;"></td>
+        </tr>
+      `;
+
+      const cust = customersList.find(c => c.customer_id == custId);
+      document.getElementById('p-book-no').innerText = bookNoVal;
+      document.getElementById('p-bill-no').innerText = billNoVal;
+      document.getElementById('p-bill-date').innerText = document.getElementById('bill-date').value;
+      document.getElementById('p-cust-tax').innerText = cust?.tax_id || '0195538000370';
+      document.getElementById('p-cust-name').innerText = cust?.customer_name || '-';
+      document.getElementById('p-cust-address').innerText = cust?.address || '110 หมู่ 8 ถนนแก่งคอย - บ้านนา ต.ตาลเดี่ยว อ.แก่งคอย จ.สระบุรี 18110';
+
+      const subtotalVal = parseFloat(document.getElementById('lbl-subtotal').innerText.replace(/,/g, ''));
+      const vatVal = parseFloat(document.getElementById('lbl-vat').innerText.replace(/,/g, ''));
+      const grandVal = parseFloat(document.getElementById('lbl-grand-total').innerText.replace(/,/g, ''));
+
+      document.getElementById('p-lbl-subtotal').innerText = subtotalVal.toLocaleString('en-US', {minimumFractionDigits:2});
+      document.getElementById('p-lbl-vat').innerText = vatVal.toLocaleString('en-US', {minimumFractionDigits:2});
+      document.getElementById('p-lbl-grand-total').innerText = grandVal.toLocaleString('en-US', {minimumFractionDigits:2});
+      document.getElementById('p-lbl-thai-baht').innerText = ArabicToThaiBaht(grandVal);
+
+      const payload = {
+        bookNo: bookNoVal,
+        billNo: billNoVal,
+        billDate: document.getElementById('bill-date').value,
+        customerId: parseInt(custId),
+        items: items,
+        subtotal: subtotalVal,
+        hasVat: document.getElementById('chk-vat').checked,
+        vatAmount: vatVal,
+        grandTotal: grandVal,
+        paymentStatus: payStatus,
+        paymentMethod: payStatus === 'PAID' ? 'CASH' : 'CREDIT'
+      };
+
+      try {
+        const res = await fetch('/api/sales/create-bill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        window.print();
+        location.reload();
+      } catch (err) {
+        alert('เกิดข้อผิดพลาด: ' + err.message);
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>

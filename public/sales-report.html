@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>รายงานสรุปยอดขาย - ฝ่ายขาย</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- โหลดไลบรารี SheetJS สำหรับ Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    .app-container { max-width: 1200px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e9ecef; padding-bottom: 15px; }
+    
+    /* ฟอร์มตัวกรองค้นหา */
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1.5fr auto;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 20px;
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+    }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 13.5px; color: #495057; }
+    .form-control {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .form-control:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.15); }
+
+    .btn { padding: 9px 18px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: 'Sarabun', sans-serif; font-size: 14px; transition: all 0.2s; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-success:hover { background: #218838; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-danger:hover { background: #c82333; }
+
+    /* กล่องสรุปสถิติ (Cards) */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #007bff, #0056b3);
+      color: white;
+      padding: 18px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,123,255,0.2);
+    }
+    .stat-card.success { background: linear-gradient(135deg, #28a745, #1e7e34); box-shadow: 0 4px 10px rgba(40,167,69,0.2); }
+    .stat-card.warning { background: linear-gradient(135deg, #ffc107, #d39e00); color: #333; box-shadow: 0 4px 10px rgba(255,193,7,0.2); }
+    .stat-title { font-size: 13.5px; font-weight: 500; opacity: 0.9; margin-bottom: 6px; }
+    .stat-value { font-size: 24px; font-weight: 700; }
+
+    /* ตารางแสดงรายการบิล */
+    table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    table.data-table th { background: #e9ecef; padding: 10px 8px; text-align: left; font-size: 13.5px; color: #495057; }
+    table.data-table td { padding: 9px 8px; border-bottom: 1px solid #dee2e6; font-size: 13.5px; }
+    table.data-table tfoot td { background: #f8f9fa; padding: 10px 8px; font-weight: 700; border-top: 2px solid #dee2e6; border-bottom: 2px solid #dee2e6; font-size: 14px; }
+    
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge.paid { background: #d4edda; color: #155724; }
+    .badge.unpaid { background: #f8d7da; color: #721c24; }
+
+    /* สไตล์สำหรับการพิมพ์ / บันทึก PDF */
+    @media print {
+      body { background: white !important; padding: 0 !important; color: #000 !important; }
+      .app-container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      .card { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+      .no-print, .filter-grid, .header-bar div:nth-child(2) { display: none !important; }
+      table.data-table th { background: #e9ecef !important; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="card">
+      <div class="header-bar">
+        <div>
+          <h2 style="margin: 0;">📊 รายงานสรุปยอดขายสินค้า</h2>
+          <small style="color: #6c757d;">ตรวจสอบยอดขายตามช่วงวันที่ หรือเลือกดูเป็นรายเดือน</small>
+        </div>
+        <div style="display: flex; gap: 8px;" class="no-print">
+          <button class="btn btn-success" onclick="exportToExcel()">📥 โหลดเป็น Excel</button>
+          <button class="btn btn-danger" onclick="exportToPDF()">🖨️ พิมพ์ / บันทึก PDF</button>
+          <button class="btn btn-secondary" onclick="window.location.href='sale.html'">📝 กลับไปหน้าเปิดบิล</button>
+        </div>
+      </div>
+
+      <!-- ส่วนตัวกรองค้นหา -->
+      <div class="filter-grid no-print">
+        <div class="form-group">
+          <label>ประเภทการดูรายงาน :</label>
+          <select id="filter-type" class="form-control" onchange="toggleFilterMode()">
+            <option value="range">📅 ช่วงวันที่ (From - To)</option>
+            <option value="month">🗓️ รายเดือน</option>
+          </select>
+        </div>
+
+        <!-- เงื่อนไขแบบช่วงวันที่ -->
+        <div class="form-group mode-range">
+          <label>ตั้งแต่วันที่ :</label>
+          <input type="date" id="start-date" class="form-control">
+        </div>
+        <div class="form-group mode-range">
+          <label>ถึงวันที่ :</label>
+          <input type="date" id="end-date" class="form-control">
+        </div>
+
+        <!-- เงื่อนไขแบบรายเดือน -->
+        <div class="form-group mode-month" style="display: none;">
+          <label>เลือกเดือน :</label>
+          <input type="month" id="select-month" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label>สถานะการชำระ :</label>
+          <select id="filter-status" class="form-control">
+            <option value="">-- ทั้งหมด --</option>
+            <option value="PAID">ชำระแล้ว (Cash)</option>
+            <option value="UNPAID">ยังไม่ชำระ (Credit)</option>
+          </select>
+        </div>
+
+        <div>
+          <button class="btn btn-primary" onclick="loadSalesReport()" style="width: 100%;">🔍 ค้นหาข้อมูล</button>
+        </div>
+      </div>
+
+      <!-- การ์ดสรุปตัวเลขสถิติ -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-title">📦 จำนวนบิลทั้งหมด</div>
+          <div class="stat-value" id="stat-total-bills">0 บิล</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-title">💰 ยอดขายรวมทั้งสิ้น (Net Total)</div>
+          <div class="stat-value" id="stat-total-amount">0.00 บาท</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-title">🏷️ ยอดภาษี VAT 7% รวม</div>
+          <div class="stat-value" id="stat-total-vat">0.00 บาท</div>
+        </div>
+      </div>
+
+      <!-- ตารางแสดงรายการบิล -->
+      <h4 style="margin-bottom: 8px;">📋 รายละเอียดใบเสร็จ / บิลขาย</h4>
+      <table class="data-table" id="report-table">
+        <thead>
+          <tr>
+            <th style="width: 15%;">เล่มที่ / เลขที่</th>
+            <th style="width: 20%;">วันที่ออกบิล</th>
+            <th style="width: 35%;">ชื่อลูกค้า</th>
+            <th style="width: 15%;">สถานะชำระเงิน</th>
+            <th style="width: 15%; text-align: right;">ยอดรวมสุทธิ</th>
+          </tr>
+        </thead>
+        <tbody id="report-tbody">
+          <tr>
+            <td colspan="5" style="text-align: center; color: #888; padding: 20px;">กรุณากดค้นหาข้อมูลรายงาน</td>
+          </tr>
+        </tbody>
+        <tfoot id="report-tfoot" style="display: none;">
+          <tr>
+            <td colspan="4" style="text-align: right;">ยอดขายรวมทั้งสิ้น:</td>
+            <td style="text-align: right; font-weight: bold; color: #007bff;" id="footer-total-amount">0.00</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+
+    window.onload = () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('start-date').value = today;
+      document.getElementById('end-date').value = today;
+      document.getElementById('select-month').value = today.slice(0, 7);
+
+      loadSalesReport();
+    };
+
+    function toggleFilterMode() {
+      const mode = document.getElementById('filter-type').value;
+      const rangeElements = document.querySelectorAll('.mode-range');
+      const monthElements = document.querySelectorAll('.mode-month');
+
+      if (mode === 'range') {
+        rangeElements.forEach(el => el.style.display = 'block');
+        monthElements.forEach(el => el.style.display = 'none');
+      } else {
+        rangeElements.forEach(el => el.style.display = 'none');
+        monthElements.forEach(el => el.style.display = 'block');
+      }
+    }
+
+    async function loadSalesReport() {
+      const mode = document.getElementById('filter-type').value;
+      const status = document.getElementById('filter-status').value;
+
+      let queryParams = `?status=${status}`;
+      if (mode === 'range') {
+        const start = document.getElementById('start-date').value;
+        const end = document.getElementById('end-date').value;
+        queryParams += `&startDate=${start}&endDate=${end}`;
+      } else {
+        const month = document.getElementById('select-month').value;
+        queryParams += `&month=${month}`;
+      }
+
+      try {
+        const res = await fetch(`/api/sales/report${queryParams}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('ไม่สามารถดึงข้อมูลรายงานได้');
+        
+        const data = await res.json();
+        renderReport(data);
+      } catch (err) {
+        console.error(err);
+        renderReport({ bills: [], totalBills: 0, totalAmount: 0, totalVat: 0 });
+      }
+    }
+
+    function renderReport(data) {
+      const tbody = document.getElementById('report-tbody');
+      const tfoot = document.getElementById('report-tfoot');
+      tbody.innerHTML = '';
+
+      document.getElementById('stat-total-bills').innerText = `${(data.bills || []).length} บิล`;
+      document.getElementById('stat-total-amount').innerText = `${(data.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} บาท`;
+      document.getElementById('stat-total-vat').innerText = `${(data.totalVat || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} บาท`;
+
+      if (!data.bills || data.bills.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">ไม่พบข้อมูลการขายในเงื่อนไขที่เลือก</td></tr>`;
+        tfoot.style.display = 'none';
+        return;
+      }
+
+      data.bills.forEach(bill => {
+        const isPaid = bill.payment_status === 'PAID';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${bill.book_no}/${bill.bill_no}</strong></td>
+          <td>${bill.bill_date}</td>
+          <td>${bill.customer_name}</td>
+          <td><span class="badge ${isPaid ? 'paid' : 'unpaid'}">${isPaid ? '✅ ชำระแล้ว' : '⏳ ยังไม่ชำระ'}</span></td>
+          <td style="text-align: right; font-weight: bold; color: #007bff;">${parseFloat(bill.grand_total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // แสดงแถวสรุปด้านล่างตาราง (Footer)
+      document.getElementById('footer-total-amount').innerText = (data.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+      tfoot.style.display = 'table-row-group';
+    }
+
+    // ฟังก์ชันสำหรับดาวน์โหลดตารางเป็นไฟล์ Excel (.xlsx)
+    function exportToExcel() {
+      const table = document.getElementById('report-table');
+      if (!table) return alert('ไม่พบข้อมูลสำหรับส่งออก');
+      
+      const wb = XLSX.utils.table_to_book(table, { sheet: "Sales Report" });
+      XLSX.writeFile(wb, "Sales_Summary_Report.xlsx");
+    }
+
+    // ฟังก์ชันสำหรับพิมพ์ / บันทึกเป็น PDF
+    function exportToPDF() {
+      window.print();
+    }
+  </script>
+</body>
+</html>
